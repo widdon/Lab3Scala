@@ -5,14 +5,12 @@ import scala.collection.immutable.LazyList
 import scala.util.Random
 
 // ================ ADT ================
-// Трейт для состояний элементов панели
 sealed trait ElementState
 case object Pressed extends ElementState
 case object Released extends ElementState
 case object Active extends ElementState
 case object Inactive extends ElementState
 
-// Трейт для цветов ламп с их кодами отображения
 sealed trait LampColor {
   def code: String
 }
@@ -28,7 +26,6 @@ object LampColor {
     values(random.nextInt(values.length))
 }
 
-// Трейт для всех элементов панели
 sealed trait PanelElement {
   def x: Int
   def y: Int
@@ -100,7 +97,6 @@ case class ControlPanel(
     }
   }
 
-  // Метод нажатия кнопки с проверкой типа элемента и возвратом сообщения об ошибке
   def pressButtonWithCheck(x: Int, y: Int): (ControlPanel, String) = {
     getElement(x, y) match {
       case Some(button: Button) =>
@@ -112,7 +108,6 @@ case class ControlPanel(
     }
   }
 
-  // Метод для отображения панели
   def display: String = {
     (0 until height).map { y =>
       (0 until width).map { x =>
@@ -170,22 +165,14 @@ object PanelBuilder {
 // ================ Основная программа ================
 object Main {
 
-  @tailrec
-  def gameLoop(panel: ControlPanel): Unit = {
-    println("\n" + panel.display)
-    println("\nВведите координаты кнопки (x y) или -1 для выхода:")
-
-    val input = scala.io.StdIn.readLine().trim
-
-    if (input == "-1") return
-
-    val (nextPanel, message) = input.split("\\s+") match {
+  // Функция для обработки одной команды
+  private def processCommand(panel: ControlPanel, command: String): (ControlPanel, String) = {
+    command.split("\\s+") match {
       case Array(xStr, yStr) =>
         try {
           val x = xStr.toInt
           val y = yStr.toInt
 
-          // Проверяем, что координаты в пределах панели
           if (x >= 0 && x < panel.width && y >= 0 && y < panel.height) {
             panel.pressButtonWithCheck(x, y)
           } else {
@@ -198,13 +185,57 @@ object Main {
       case _ =>
         (panel, "Введите два числа через пробел")
     }
+  }
 
-    if (message.nonEmpty) {
-      println(message)
+  @tailrec
+  private def processCommands(panel: ControlPanel, commands: LazyList[String]): Unit = {
+    // Берем следующую команду из ленивого потока
+    commands match {
+      case LazyList() => // Поток пуст - завершаем работу
+        println("Конец ввода")
+
+      case command #:: restCommands =>
+        val trimmedCommand = command.trim
+
+        if (trimmedCommand == "-1") {
+          println("Выход из программы")
+        } else {
+          // Обрабатываем команду
+          val (nextPanel, message) = processCommand(panel, trimmedCommand)
+
+          // Выводим сообщение об ошибке, если оно есть
+          if (message.nonEmpty) {
+            println(message)
+          }
+
+          // Если команда была успешной (нажата кнопка), показываем обновленную панель
+          if (message.isEmpty || !message.contains("ошибка")) {
+            println("\nТекущее состояние панели:")
+            println(nextPanel.display)
+          } else {
+            // Если была ошибка, показываем ту же панель
+            println("\nТекущее состояние панели:")
+            println(panel.display)
+          }
+
+          // Рекурсивно обрабатываем оставшиеся команды
+          println("\nВведите следующую команду (x y) или -1 для выхода:")
+          processCommands(if (message.isEmpty) nextPanel else panel, restCommands)
+        }
     }
+  }
 
-    // Рекурсивный вызов с обновленной панелью (хвостовая рекурсия)
-    gameLoop(nextPanel)
+  // Основной игровой цикл с ленивым потоком ввода
+  def gameLoop(panel: ControlPanel): Unit = {
+    println("\nСгенерирована панель управления:")
+    println(panel.display)
+    println("\nВведите координаты кнопки (x y) или -1 для выхода:")
+
+    // Создаем бесконечный ленивый поток ввода
+    val inputStream: LazyList[String] = LazyList.continually(scala.io.StdIn.readLine())
+
+    // Обрабатываем команды из ленивого потока
+    processCommands(panel, inputStream)
   }
 
   def main(args: Array[String]): Unit = {
@@ -212,6 +243,8 @@ object Main {
 
     println("Введите размеры панели (ширина высота):")
 
+    // Для начального ввода тоже можно использовать ленивый подход,
+    // но для простоты оставим обычный ввод
     val dimensions = scala.io.StdIn.readLine().trim
 
     dimensions.split("\\s+") match {
@@ -220,10 +253,8 @@ object Main {
           val width = widthStr.toInt
           val height = heightStr.toInt
 
-          // Проверяем, что размеры положительные
           if (width > 0 && height > 0) {
             val panel = PanelBuilder.buildRandomPanel(width, height)
-            println("\nСгенерирована панель управления:")
             gameLoop(panel)
           } else {
             println("Размеры должны быть положительными числами")
