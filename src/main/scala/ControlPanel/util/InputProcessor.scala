@@ -16,7 +16,7 @@ object InputProcessor {
         processCoordinates(panel, xStr, yStr, toggle = true)
 
       case _ =>
-        (panel, "Неверная команда! Форматы: press x y, release x y, или x y для переключения")
+        (panel, "Неверная команда! x y для переключения кнопки")
     }
   }
 
@@ -79,4 +79,5 @@ object InputProcessor {
         }
     }
   }
+
 }
