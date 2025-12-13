@@ -24,6 +24,8 @@ case class Button(
   override def display: String = state match {
     case ElementState.Pressed => "o"
     case ElementState.Released => "O"
+    case ElementState.Active => "?" // Не должно случиться
+    case ElementState.Inactive => "?" // Не должно случиться
   }
 }
 
@@ -40,5 +42,7 @@ case class Lamp(
   override def display: String = state match {
     case ElementState.Active => s"Л_${color.code}"
     case ElementState.Inactive => "Л"
+    case ElementState.Pressed => "?" // Не должно случиться
+    case ElementState.Released => "?" // Не должно случиться
   }
 }
